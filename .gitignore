@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Test and coverage artifacts
+coverage/
+.nyc_output/
+
+# Logs and records (Adapter runtime outputs)
+logs/
+*.log
+records/
+.codex-responses-adapter/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Release artifacts
+release/
+
+# Test capture artefacts
+tmp-records/
+tmp-verify/
+
+# Personal / unrelated files
+新建文件夹*/
+scratch-repro.mjs
+out.log

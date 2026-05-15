@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Codex Responses Adapter — Admin</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css"
+    />
+    <link rel="stylesheet" href="./admin.css" />
+  </head>
+  <body>
+    <!--
+      Author / license banner. Do not remove. The text and contact
+      info are part of the work's attribution and re-distribution
+      conditions ("not for resale or unauthorised redistribution").
+    -->
+    <div id="author-banner" role="note">
+      <strong>王小王 著作</strong>
+      <span class="banner-rule">不得用于二次改编贩卖</span>
+      <span class="banner-contact">更多免费工具加 VX：<code>YYYYFC0111</code></span>
+    </div>
+
+    <header class="container">
+      <hgroup>
+        <h2>Codex Responses Adapter</h2>
+        <p id="status-line">加载中…</p>
+      </hgroup>
+      <nav>
+        <ul>
+          <li><a href="#" class="tab-link" data-tab="dashboard">仪表盘</a></li>
+          <li><a href="#" class="tab-link" data-tab="providers">Providers</a></li>
+          <li><a href="#" class="tab-link" data-tab="mappings">模型映射</a></li>
+          <li><a href="#" class="tab-link" data-tab="settings">设置</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main class="container">
+      <!-- Dashboard tab -------------------------------------------------- -->
+      <section id="tab-dashboard" class="tab-panel">
+        <article>
+          <header><strong>运行状态</strong></header>
+          <div class="grid">
+            <div>
+              <small>监听</small>
+              <div id="dash-listening">—</div>
+            </div>
+            <div>
+              <small>运行时长</small>
+              <div id="dash-uptime">—</div>
+            </div>
+            <div>
+              <small>Providers</small>
+              <div id="dash-providers-count">—</div>
+            </div>
+            <div>
+              <small>映射</small>
+              <div id="dash-mappings-count">—</div>
+            </div>
+          </div>
+          <footer>
+            <small id="dash-admin-key-status">—</small>
+          </footer>
+        </article>
+
+        <article>
+          <header><strong>最近请求</strong></header>
+          <div class="table-wrap">
+            <table id="recent-table" class="striped">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>方法</th>
+                  <th>路径</th>
+                  <th>状态</th>
+                  <th>耗时 (ms)</th>
+                  <th>模型</th>
+                  <th>Provider</th>
+                  <th>Stream</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article>
+          <header><strong>使用方法</strong></header>
+          <p>将 Codex CLI 的 <code>OPENAI_BASE_URL</code> 指向当前 Adapter：</p>
+          <pre><code id="codex-snippet">export OPENAI_BASE_URL=http://127.0.0.1:11434/v1
+export OPENAI_API_KEY=&lt;admin_key 或留空&gt;
+codex --model &lt;在此页配置的 alias&gt;</code></pre>
+        </article>
+      </section>
+
+      <!-- Providers tab -------------------------------------------------- -->
+      <section id="tab-providers" class="tab-panel" hidden>
+        <article>
+          <header>
+            <strong>Providers</strong>
+            <span class="header-actions">
+              <button id="btn-new-provider" class="secondary">新增</button>
+              <select id="preset-picker" aria-label="预设">
+                <option value="">— 从预设导入 —</option>
+              </select>
+            </span>
+          </header>
+          <div class="table-wrap">
+            <table id="providers-table" class="striped">
+              <thead>
+                <tr>
+                  <th>名称</th>
+                  <th>Base URL</th>
+                  <th>Models</th>
+                  <th>能力</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- Mappings tab --------------------------------------------------- -->
+      <section id="tab-mappings" class="tab-panel" hidden>
+        <article>
+          <header>
+            <strong>模型映射</strong>
+            <span class="header-actions">
+              <button id="btn-new-mapping" class="secondary">新增</button>
+            </span>
+          </header>
+          <div class="table-wrap">
+            <table id="mappings-table" class="striped">
+              <thead>
+                <tr>
+                  <th>Codex 别名</th>
+                  <th>Provider</th>
+                  <th>上游 model</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- Settings tab --------------------------------------------------- -->
+      <section id="tab-settings" class="tab-panel" hidden>
+        <article>
+          <header><strong>全局设置</strong></header>
+          <form id="settings-form">
+            <label>
+              监听地址 (host)
+              <input name="listen.host" placeholder="127.0.0.1" />
+              <small>仅 127.0.0.1 时无需 admin_key</small>
+            </label>
+            <label>
+              监听端口 (port)
+              <input name="listen.port" type="number" min="1" max="65535" />
+            </label>
+            <label>
+              最大并发
+              <input name="listen.max_concurrency" type="number" min="1" />
+            </label>
+            <label>
+              日志级别
+              <select name="log.level">
+                <option value="info">info</option>
+                <option value="debug">debug</option>
+                <option value="warn">warn</option>
+                <option value="error">error</option>
+              </select>
+            </label>
+            <label>
+              <input type="checkbox" name="log.record_bodies" /> 记录请求/响应到 NDJSON
+            </label>
+            <label>
+              录制目录
+              <input name="log.record_dir" placeholder="/tmp/codex-records" />
+            </label>
+            <label>
+              默认模型 (default_model)
+              <input name="default_model" placeholder="留空使用 codex 请求中携带的 model" />
+            </label>
+            <label>
+              admin_key (留空 = 仅 loopback)
+              <input name="admin_key" type="password" placeholder="未设置" />
+            </label>
+            <button type="submit">保存</button>
+          </form>
+        </article>
+
+        <article>
+          <header><strong>当前 YAML 预览</strong></header>
+          <pre><code id="yaml-preview">加载中…</code></pre>
+        </article>
+      </section>
+    </main>
+
+    <!-- Provider edit dialog ------------------------------------------- -->
+    <dialog id="dlg-provider">
+      <article>
+        <header>
+          <a href="#close" aria-label="Close" class="close" data-close-dialog="dlg-provider"></a>
+          <strong id="dlg-provider-title">新增 Provider</strong>
+        </header>
+        <form id="form-provider">
+          <input type="hidden" name="_orig_name" />
+          <label>
+            名称 (provider key)
+            <input name="name" required pattern="^[a-zA-Z0-9_\-]+$" />
+          </label>
+          <label>
+            Base URL
+            <input name="base_url" type="url" required placeholder="https://api.deepseek.com/v1" />
+          </label>
+          <label>
+            API Key
+            <input name="api_key" required />
+          </label>
+          <label>
+            Models（逗号分隔）
+            <input name="models" required placeholder="deepseek-chat, deepseek-reasoner" />
+          </label>
+          <fieldset>
+            <legend>能力</legend>
+            <label><input type="checkbox" name="cap_vision" /> Vision (input_image)</label>
+            <label><input type="checkbox" name="cap_reasoning" /> Reasoning (effort)</label>
+          </fieldset>
+          <details>
+            <summary>高级</summary>
+            <label>
+              reasoning_param_name
+              <input name="reasoning_param_name" placeholder="例：reasoning_effort" />
+            </label>
+            <label>
+              timeout_ms
+              <input name="timeout_ms" type="number" min="1000" placeholder="60000" />
+            </label>
+            <label>
+              max_retries
+              <input name="max_retries" type="number" min="0" placeholder="0" />
+            </label>
+            <label>
+              max_connections
+              <input name="max_connections" type="number" min="1" placeholder="16" />
+            </label>
+          </details>
+          <footer>
+            <button type="button" class="secondary" data-close-dialog="dlg-provider">取消</button>
+            <button type="submit">保存</button>
+          </footer>
+        </form>
+      </article>
+    </dialog>
+
+    <!-- Mapping edit dialog -------------------------------------------- -->
+    <dialog id="dlg-mapping">
+      <article>
+        <header>
+          <a href="#close" aria-label="Close" class="close" data-close-dialog="dlg-mapping"></a>
+          <strong id="dlg-mapping-title">新增模型映射</strong>
+        </header>
+        <form id="form-mapping">
+          <input type="hidden" name="_orig_alias" />
+          <label>
+            Codex 别名 (alias)
+            <input name="alias" required placeholder="gpt-4o" />
+          </label>
+          <label>
+            Provider
+            <select name="provider" required></select>
+          </label>
+          <label>
+            上游 model
+            <input name="upstream_model" required placeholder="deepseek-chat" />
+          </label>
+          <footer>
+            <button type="button" class="secondary" data-close-dialog="dlg-mapping">取消</button>
+            <button type="submit">保存</button>
+          </footer>
+        </form>
+      </article>
+    </dialog>
+
+    <!-- Test-connection result dialog ----------------------------------- -->
+    <dialog id="dlg-test">
+      <article>
+        <header>
+          <a href="#close" aria-label="Close" class="close" data-close-dialog="dlg-test"></a>
+          <strong>连接测试</strong>
+        </header>
+        <div id="test-result"></div>
+        <footer>
+          <button type="button" data-close-dialog="dlg-test">关闭</button>
+        </footer>
+      </article>
+    </dialog>
+
+    <!-- Toast ------------------------------------------------------------ -->
+    <div id="toast" hidden></div>
+
+    <script src="./admin.js" type="module"></script>
+  </body>
+</html>
