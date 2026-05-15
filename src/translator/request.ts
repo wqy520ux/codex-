@@ -290,7 +290,25 @@ export function translateRequest(
     }
   }
 
-  out.messages = messages;
+  // ── Final safety net: ensure tool_calls invariants hold ─────────────
+  //
+  // OpenAI's Chat Completions schema mandates that *every* tool_call_id
+  // listed in an assistant's `tool_calls` array is responded to by a
+  // matching `role: "tool"` message **before any other assistant
+  // message can appear**. Codex sometimes interleaves a partial
+  // history (truncation, parallel-tool-call edge cases, retries that
+  // re-run only some tools) such that one or more responses are
+  // missing in the input we receive. Without this pass, the upstream
+  // returns 400 "insufficient tool messages following tool_calls".
+  //
+  // This sanitiser walks the messages in order and, for every
+  // assistant message with tool_calls, checks that each call_id is
+  // already followed by a tool message. Where a response is missing
+  // it inserts a synthetic `{role:"tool", tool_call_id, content: ""}`
+  // immediately after the assistant message, so the schema is
+  // satisfied. The model just sees an empty tool result for that
+  // call, which is harmless — it will either retry or work around it.
+  out.messages = sanitiseToolCalls(messages);
 
   // 2.6 — single request-scoped warn when at least one `input_image` was
   // dropped due to the provider lacking vision capability. Emitting one
@@ -585,4 +603,71 @@ function translateToolChoice(tc: ToolChoice): ChatToolChoice {
     return tc;
   }
   return { type: "function", function: { name: tc.name } };
+}
+
+
+/**
+ * Final safety pass over the constructed `messages` array.
+ *
+ * Guarantees that every assistant message carrying `tool_calls`
+ * is followed by a matching `role: "tool"` reply for each
+ * `tool_call_id`, **before any other assistant message appears**.
+ *
+ * Why this is needed in practice:
+ *
+ * Codex CLI 0.130+ may ship the input array in shapes that violate
+ * the strict OpenAI Chat Completions contract — most often when:
+ *
+ *  - the model emitted multiple `function_call` items in parallel
+ *    and Codex retried only a subset of them in the next turn;
+ *  - the conversation was truncated server-side and the truncation
+ *    cut between a `function_call` and its `function_call_output`;
+ *  - cc-switch / Codex desktop merges histories from different
+ *    sessions where one session's tool result was never produced.
+ *
+ * The user-visible symptom is `400: "An assistant message with
+ * 'tool_calls' must be followed by tool messages responding to each
+ * 'tool_call_id'. (insufficient tool messages following tool_calls
+ * message)"` and the stream dies. Auto-inserting an empty `tool`
+ * placeholder for the missing call_id keeps the schema satisfied;
+ * the model gets to see an empty observation and can replan.
+ */
+function sanitiseToolCalls(input: ChatMessage[]): ChatMessage[] {
+  const out: ChatMessage[] = [];
+
+  for (let i = 0; i < input.length; i += 1) {
+    const msg = input[i];
+    if (msg === undefined) continue;
+    out.push(msg);
+
+    if (msg.role !== "assistant") continue;
+    const toolCalls = (msg as { tool_calls?: ChatToolCall[] }).tool_calls;
+    if (!Array.isArray(toolCalls) || toolCalls.length === 0) continue;
+
+    // Collect the tool messages that immediately follow this
+    // assistant in the original input. They must come BEFORE any
+    // other non-tool message.
+    const seenIds = new Set<string>();
+    for (let j = i + 1; j < input.length; j += 1) {
+      const next = input[j];
+      if (next === undefined) continue;
+      if (next.role !== "tool") break;
+      const tci = (next as { tool_call_id?: string }).tool_call_id;
+      if (typeof tci === "string" && tci.length > 0) seenIds.add(tci);
+    }
+
+    // For every required call_id missing a tool reply, append a
+    // synthetic empty tool message right after the assistant.
+    for (const tc of toolCalls) {
+      if (!seenIds.has(tc.id)) {
+        out.push({
+          role: "tool",
+          content: "",
+          tool_call_id: tc.id,
+        });
+      }
+    }
+  }
+
+  return out;
 }
