@@ -102,6 +102,8 @@ const INCLUDE = [
   // Launcher scripts — required.
   "start.bat",
   "start.sh",
+  "install-and-start.bat",
+  "install-and-start.sh",
   "scripts/start.mjs",
   "scripts/copy-static.mjs",
   // npm metadata — required so `npm install` resolves the same versions.
@@ -217,9 +219,12 @@ function makeNotesTxt(version) {
     "  - Node.js 20 or newer  (https://nodejs.org/)",
     "",
     "FIRST RUN",
-    "  Windows:        double-click  start.bat",
-    "  macOS / Linux:  ./start.sh    (chmod +x start.sh first)",
+    "  Windows:        double-click  install-and-start.bat   (auto-installs Node.js if missing)",
+    "                  or             start.bat              (requires Node.js 20+ already installed)",
+    "  macOS / Linux:  ./install-and-start.sh                (auto-installs via brew/nvm)",
+    "                  or              ./start.sh            (requires Node.js 20+ already installed)",
     "",
+    "  install-and-start scripts use Chinese mirrors (npmmirror) so they work without VPN.",
     "  The first launch downloads npm dependencies once (1-2 min).",
     "  Every subsequent launch is instant.",
     "",

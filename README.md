@@ -25,7 +25,19 @@
 
 ## 🚀 一键启动（30 秒上手）
 
-**前提：** 安装 [Node.js 20+](https://nodejs.org/)
+### 完全没装过 Node.js？— 用一键安装脚本
+
+**Windows：** 双击 `install-and-start.bat`
+- 自动检测 Node.js 是否已装 + 版本是否 >= 20
+- 没装就自动从国内镜像下载 LTS 并静默安装（约 1-2 分钟）
+- 装完立即启动 adapter
+
+**macOS / Linux：** `./install-and-start.sh`
+- 自动用 brew / nvm 装 Node.js LTS
+- 自动加 `npmmirror` 国内镜像
+- 装完立即启动 adapter
+
+### 已经装过 Node.js 20+？— 直接启动
 
 **Windows：** 双击 `start.bat`
 
